@@ -10,7 +10,9 @@ set(MY_DESCRIPTION "A Soku mod built from the mod template." CACHE STRING "Full 
 set(MY_DESCRIPTION_FILE "A Soku mod" CACHE STRING "Short description used in version resources")
 set(MY_COMPANY "YourName" CACHE STRING "Author or organization name for version resources")
 option(MY_LUA_EXPORT "Export as Lua module, callable via require(\"<mod name>\")" OFF)
+option(MY_BUILD_DAT "Pack src/data into a package(.dat) with shady-cli" OFF)
 set(MY_GAME_FOLDER "$ENV{TH123}" CACHE STRING "Game root directory for install and debugging; defaults to the TH123 environment variable")
+find_program(MY_CLI_EXECUTABLE NAMES shady-cli.exe shady-cli DOC "Path to shady-cli.exe, for .dat packing")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_C_STANDARD 17)
@@ -26,6 +28,8 @@ project(${MY_MOD_NAME}
 if(NOT WIN32)
   message(FATAL_ERROR "This project can only be built as x86 (Win32).")
 endif()
+# Keep source_group() folders active on all generators.
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
@@ -63,14 +67,19 @@ file(GLOB_RECURSE GLOB_HEADER_FILE CONFIGURE_DEPENDS
   "${CMAKE_SOURCE_DIR}/src/*.hpp" "${CMAKE_SOURCE_DIR}/src/*.h"
 )
 set(DIST_HEADER_FILE "${CMAKE_SOURCE_DIR}/distribution/export.hpp")
+# Shipped config templates, shown in the IDE and installed next to the DLL.
+file(GLOB_RECURSE DIST_CFG_FILE CONFIGURE_DEPENDS
+  "${CMAKE_SOURCE_DIR}/distribution/*.ini"
+)
 source_group(TREE "${CMAKE_SOURCE_DIR}/src" PREFIX "Source Files" FILES ${GLOB_SOURCE_FILE})
 source_group(TREE "${CMAKE_SOURCE_DIR}/src" PREFIX "Header Files" FILES ${GLOB_HEADER_FILE})
 source_group("Header Files\\distribution" FILES ${DIST_HEADER_FILE})
+source_group(TREE "${CMAKE_SOURCE_DIR}/distribution" PREFIX "Config Files" FILES ${DIST_CFG_FILE})
 # =================================================
 # Main Target includes and linking
 # =================================================
 add_library(${PROJECT_NAME} MODULE
-  ${GLOB_SOURCE_FILE} ${GLOB_HEADER_FILE} ${DIST_HEADER_FILE}
+  ${GLOB_SOURCE_FILE} ${GLOB_HEADER_FILE} ${DIST_HEADER_FILE} ${DIST_CFG_FILE}
   "${CMAKE_BINARY_DIR}/version.rc"
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -101,6 +110,9 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 if(MY_LUA_EXPORT)
   target_compile_definitions(${PROJECT_NAME} PRIVATE MY_LUA_EXPORT)
 endif()
+if(MY_BUILD_DAT)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE MY_BUILD_DAT)
+endif()
 
 # UTF-8 source and execution charsets, required for non-ASCII comments
 if(MSVC)
@@ -115,12 +127,49 @@ endif()
 set_target_properties(${PROJECT_NAME} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 # =================================================
+# .dat package via shady-cli
+# =================================================
+if(MY_BUILD_DAT)
+  if(NOT MY_CLI_EXECUTABLE)
+    message(FATAL_ERROR "shady-cli was not found; set MY_CLI_EXECUTABLE manually.")
+  endif()
+  set(MY_DAT_ROOT "${CMAKE_SOURCE_DIR}/src/data")
+  set(MY_DAT_FILE "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.dat")
+  file(GLOB_RECURSE MY_DAT_INPUT CONFIGURE_DEPENDS "${MY_DAT_ROOT}/*")
+  if(MY_DAT_INPUT)
+    add_custom_command(OUTPUT "${MY_DAT_FILE}"
+      COMMAND ${MY_CLI_EXECUTABLE} pack -o "${MY_DAT_FILE}" -m data "${MY_DAT_ROOT}"
+      DEPENDS ${MY_DAT_INPUT}
+      COMMENT "Pack src/data into ${PROJECT_NAME}.dat"
+      VERBATIM
+    )
+    add_custom_target(${PROJECT_NAME}_dat DEPENDS "${MY_DAT_FILE}")
+    add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_dat)
+  else()
+    message(WARNING "MY_BUILD_DAT is ON but ${MY_DAT_ROOT} is empty: no .dat will be built.")
+  endif()
+endif()
+
+# =================================================
 # Install
 # =================================================
 set(CMAKE_INSTALL_PREFIX "${MY_GAME_FOLDER}" CACHE PATH "Install prefix, can be targeted to game folder." FORCE)
 cmake_path(APPEND CMAKE_INSTALL_PREFIX "modules" "${PROJECT_NAME}" OUTPUT_VARIABLE CMAKE_INSTALL_DIR)
 message("Will install to ${CMAKE_INSTALL_DIR}")
 install(FILES $<TARGET_FILE:${PROJECT_NAME}> DESTINATION "${CMAKE_INSTALL_DIR}")
+# Install default inis only; never reset a user-edited config on rebuild.
+foreach(ini_path IN LISTS DIST_CFG_FILE)
+    get_filename_component(ini_name "${ini_path}" NAME)
+    install(CODE "
+        if(NOT EXISTS \"${CMAKE_INSTALL_DIR}/${ini_name}\")
+            message(STATUS \"Installing default ${ini_name}\")
+            file(INSTALL FILES \"${ini_path}\" DESTINATION \"${CMAKE_INSTALL_DIR}\")
+        endif()
+    ")
+endforeach()
+if(MY_BUILD_DAT AND MY_DAT_FILE)
+  install(FILES "${MY_DAT_FILE}" DESTINATION "${CMAKE_INSTALL_DIR}")
+endif()
 # PDBs for Debug and RelWithDebInfo builds
 if(MSVC)
   install(
@@ -130,7 +179,7 @@ if(MSVC)
 endif()
 
 # =================================================
-# Debugging
+# Debugging settings
 # =================================================
 if(MSVC)
   set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})

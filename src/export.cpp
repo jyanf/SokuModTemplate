@@ -14,8 +14,6 @@ extern "C" __declspec(dllexport) bool CheckVersion(const BYTE hash[16])
 // Called once the mod loader is ready; register hooks here.
 extern "C" __declspec(dllexport) bool Initialize(HMODULE hMyModule, HMODULE hParentModule)
 {
-	(void)hParentModule;
-	DWORD old;
 #ifdef _DEBUG
 	FILE* _;
 
@@ -29,11 +27,8 @@ extern "C" __declspec(dllexport) bool Initialize(HMODULE hMyModule, HMODULE hPar
 #endif
 	mod::hModule = hMyModule;
 
-	VirtualProtect((LPVOID)TEXT_SECTION_OFFSET, TEXT_SECTION_SIZE, PAGE_EXECUTE_READWRITE, &old);
-
 	mod::Initialize();
 
-	VirtualProtect((LPVOID)TEXT_SECTION_OFFSET, TEXT_SECTION_SIZE, old, &old);
 	FlushInstructionCache(GetCurrentProcess(), nullptr, 0);
 	return true;
 }
@@ -50,7 +45,7 @@ extern "C" __declspec(dllexport) int getPriority()
 }
 
 // Exported API declared in distribution/export.hpp; callable from other mods
-// through LoadLibrary + GetProcAddress.
+// through LoadLibrary/GetModuleHandle + GetProcAddress.
 MOD_API const char* GetModName()
 {
 	return S_MOD_NAME;
