@@ -1,0 +1,60 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [ Debug, Release ]
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download shady-cli
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP "shady-cli.zip"
+          Invoke-WebRequest `
+            -Uri "https://github.com/enebe-nb/shady-packer/releases/download/v2.11/Release.zip" `
+            -OutFile $zip
+          $dir = Join-Path $env:RUNNER_TEMP "shady-cli"
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          $cli = Get-ChildItem -Path $dir -Recurse -Filter "shady-cli.exe" | Select-Object -First 1
+          if ($null -eq $cli) { throw "shady-cli.exe not found in Release.zip" }
+          "SHADY_CLI=$($cli.FullName)" >> $env:GITHUB_ENV
+
+      - name: Configure CMake
+        shell: pwsh
+        run: |
+          cmake -S . -B out -G "Visual Studio 17 2022" -A Win32 `
+            -DMY_GAME_FOLDER="$env:GITHUB_WORKSPACE\install" `
+            -DMY_BUILD_DAT=ON `
+            -DMY_CLI_EXECUTABLE="$env:SHADY_CLI"
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build out --config ${{ matrix.configuration }} --parallel
+
+      - name: Package ${{ matrix.configuration }}
+        shell: pwsh
+        run: |
+          $pkg = Join-Path $env:GITHUB_WORKSPACE "package\${{ matrix.configuration }}"
+          New-Item -ItemType Directory -Force -Path $pkg | Out-Null
+          # Installed mod: modules\<mod name>\<mod name>.dll (+ .dat / ini / pdb)
+          Copy-Item "$env:GITHUB_WORKSPACE\install\modules" -Destination $pkg -Recurse -Force
+          # Developer-facing distribution files, replacing the reference workflow's example copy
+          Copy-Item "$env:GITHUB_WORKSPACE\distribution" -Destination $pkg -Recurse -Force
+
+      - name: Upload ${{ matrix.configuration }} artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.configuration }}
+          path: package/${{ matrix.configuration }}/
+          if-no-files-found: error
