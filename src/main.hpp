@@ -29,7 +29,7 @@ namespace mod {
 			addBool<"Enabled">(false)
 		),
 	};
-
+	
 	// Called from the exported Initialize(); register hooks and load resources here.
 	void Initialize();
 
