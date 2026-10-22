@@ -1,6 +1,8 @@
 #include "main.hpp"
 #include "SokuLib.hpp"
 
+#include "utils/dbgprint.hpp"
+
 namespace {
 	static auto orgSokuSetup = reinterpret_cast<bool(__fastcall*)(void*, DWORD, void*)>(0x407970);
 	static bool __fastcall OnSetupInitialize(void* This, DWORD _, void* config) {
@@ -14,8 +16,8 @@ namespace {
 				throw std::runtime_error(msg);
 			}
 		else {
-			const auto msg = "ReplayInputView++: assets file (.dat) not found.\nPlease check RIV file and .ini settings!";
-			MessageBoxA(nullptr, msg, "RIV Error", MB_ICONERROR | MB_OK);
+			const auto msg = S_MOD_NAME ": assets file (.dat) not found.";
+			MessageBoxA(nullptr, msg, S_MOD_NAME " Error", MB_ICONERROR | MB_OK);
 			throw std::runtime_error(msg);
 		}
 #endif // MY_BUILD_DAT
@@ -27,15 +29,20 @@ namespace mod {
 	HMODULE mod::hModule = NULL;
 
 	void Initialize() {
+		//myprintf("%s Initializing...", S_MOD_NAME);
+		pyprint(S_MOD_NAME, " initializing... ");
 		// TODO: register hooks, read the ini, and load resources here.
 		// _DEBUG builds attach a console, so std::cout is available.
 		DWORD old;
 		VirtualProtect((LPVOID)TEXT_SECTION_OFFSET, TEXT_SECTION_SIZE, PAGE_EXECUTE_READWRITE, &old);
 		
+
 		//only for example, hook when needed
 		orgSokuSetup = SokuLib::TamperNearCall(0x7fb871, &OnSetupInitialize);
 
+
 		VirtualProtect((LPVOID)TEXT_SECTION_OFFSET, TEXT_SECTION_SIZE, old, &old);
+		myprintln("Done!");
 	}
 
 	const std::filesystem::path& GetModuleFolder() {

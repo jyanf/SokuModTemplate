@@ -14,7 +14,7 @@ option(MY_BUILD_DAT "Pack src/data into a package(.dat) with shady-cli" OFF)
 set(MY_GAME_FOLDER "$ENV{TH123}" CACHE STRING "Game root directory for install and debugging; defaults to the TH123 environment variable")
 find_program(MY_CLI_EXECUTABLE NAMES shady-cli.exe shady-cli DOC "Path to shady-cli.exe, for .dat packing")
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)

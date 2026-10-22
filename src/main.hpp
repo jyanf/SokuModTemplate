@@ -15,9 +15,6 @@
 
 #define S_MOD_NAME MY_STRINGFY(MY_MOD_NAME)
 #define S_MOD_VERSION MY_STRINGFY(MY_MOD_VERSION)
-#ifdef MY_BUILD_DAT
-#define S_DAT_NAME MY_STRINGFY(MY_MOD_NAME.dat)
-#endif
 
 namespace mod {
 	extern HMODULE hModule;
