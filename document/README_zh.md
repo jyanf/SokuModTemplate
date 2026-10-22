@@ -1,6 +1,6 @@
 # Soku 模组模板
 
-东方非想天则（Touhou 12.3 / TH12.3）的通用 DLL 模组模板，整理自[ShaderPro](https://github.com/jyanf/SokuShaderPro) 。
+东方非想天则（Touhou 12.3 / TH12.3）的通用 DLL 模组模板，整理自同作者的 [ShaderPro](https://github.com/jyanf/SokuShaderPro)、[CharacterTrailFix](https://github.com/jyanf/CharacterTrailFix)、[ReplayInputView--](https://github.com/jyanf/ReplayInputView--) 等项目。
 
 - 平台：CMake+MSVC(Win32/x86) 构建，使用静态 CRT(`/MT`)，最终生成 DLL；
 - Lua：可选的 Lua 模块导出（lua 5.4.8 + LuaBridge3），Lua 侧 `require("<模组名>")`（确保 cpath 有效）；
@@ -80,3 +80,5 @@
 - `thirdparty/SokuLib`：Custom_SokuLib（MIT），见其目录内 LICENSE / README。
 - `thirdparty/lua`：lua 5.4.8（MIT），见 `LUA_LICENSE`。
 - `thirdparty/LuaBridge`：LuaBridge3（MIT），见 `LICENSE.txt`。
+- `document/utils_tramphook.md`：整理自 [CharacterTrailFix](https://github.com/jyanf/CharacterTrailFix)（MIT）中的 `src/utils/tramphook.hpp` 及其在 `main.hpp` / `main.cpp` 中的用法。
+- `document/utils_static_config.md`：整理自 [ReplayInputView--](https://github.com/jyanf/ReplayInputView--)（MIT）中的 `src/config.hpp`（含自定义 Field 适配器 `MultiField` 范例）及其在 `main.hpp` / `main.cpp` 中的用法。

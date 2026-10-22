@@ -2,6 +2,7 @@
 #include "SokuLib.hpp"
 
 #include "utils/dbgprint.hpp"
+#include "utils/vpguard.hpp"
 
 namespace {
 	static auto orgSokuSetup = reinterpret_cast<bool(__fastcall*)(void*, DWORD, void*)>(0x407970);
@@ -30,18 +31,20 @@ namespace mod {
 
 	void Initialize() {
 		//myprintf("%s Initializing...", S_MOD_NAME);
-		pyprint(S_MOD_NAME, " initializing... ");
-		// TODO: register hooks, read the ini, and load resources here.
-		// _DEBUG builds attach a console, so std::cout is available.
-		DWORD old;
-		VirtualProtect((LPVOID)TEXT_SECTION_OFFSET, TEXT_SECTION_SIZE, PAGE_EXECUTE_READWRITE, &old);
-		
-
-		//only for example, hook when needed
-		orgSokuSetup = SokuLib::TamperNearCall(0x7fb871, &OnSetupInitialize);
-
-
-		VirtualProtect((LPVOID)TEXT_SECTION_OFFSET, TEXT_SECTION_SIZE, old, &old);
+		pyprint(S_MOD_NAME, "initializing... ");
+		// register hooks, read the ini, and load resources here.
+		iniProxy.setPath(GetIniPath());
+		iniProxy.load();
+		{ auto text_section_guard = utils::VpGuard(TEXT_SECTION_OFFSET, TEXT_SECTION_SIZE);
+			if (!text_section_guard) {
+				myprintln("!! VirtualProtect() failed.");
+				//throw std::runtime_error("VirtualProtect failed.");
+				return;
+			}
+			//only for example, hook when needed
+			orgSokuSetup = SokuLib::TamperNearCall(0x7fb871, &OnSetupInitialize);
+		}
+		pyprint("Config; [Example]>Enabled: ", iniProxy["Example"_l]["Enabled"_l]);
 		myprintln("Done!");
 	}
 

@@ -16,8 +16,19 @@
 #define S_MOD_NAME MY_STRINGFY(MY_MOD_NAME)
 #define S_MOD_VERSION MY_STRINGFY(MY_MOD_VERSION)
 
+#include "utils/static_config.hpp"
+
 namespace mod {
 	extern HMODULE hModule;
+	
+	using utils::addSection, utils::addBool;
+	using namespace utils::literal;
+	inline utils::Config iniProxy{
+		S_MOD_NAME,
+		addSection<"Example">(
+			addBool<"Enabled">(false)
+		),
+	};
 
 	// Called from the exported Initialize(); register hooks and load resources here.
 	void Initialize();
